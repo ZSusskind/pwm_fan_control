@@ -5,17 +5,12 @@ import serial
 import daemon
 import lockfile
 import time
-
 import logging
-LOGFILE = "/var/log/fan_tty_daemon.log"
-logging.basicConfig(
-    filename=LOGFILE,
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG)
 
+LOGFILE = "/var/log/fan_tty_daemon.log"
 PORT_NAME = "/dev/ttyUSB0"
 PORT_BAUD = 115200
+
 def open_serial():
     ser = None
     while ser is None:
@@ -28,6 +23,13 @@ def open_serial():
     return ser
 
 def main():
+    logging.basicConfig(
+        filename=LOGFILE,
+        format="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=logging.INFO)
+    logging.info("Daemon is starting")
+
     ser = open_serial()
 
     failsafe = False
@@ -35,7 +37,7 @@ def main():
         try:
             proc = subprocess.run("nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits", shell=True, check=True, stdout=subprocess.PIPE)
             temperatures = [int(x) for x in proc.stdout.decode().split("\n")[:-1]]
-            logging.debug(f"Raw profiled GPU temperatures are f{temperatures}")
+            logging.debug(f"Raw profiled GPU temperatures are {temperatures}")
             high_temp = min(max(max(temperatures), 10), 100)
             logging.debug(f"Will pass temperature value of {high_temp}")
             if failsafe:
@@ -60,7 +62,7 @@ def main():
             success = False
             while not success:
                 try:
-                    open_serial()
+                    ser = open_serial()
                     ser.write(packet)
                     logging.info("Successfully re-established serial communication")
                     success = True
